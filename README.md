@@ -42,6 +42,6 @@ The initial smart contract serves as the foundational layer for a much broader p
 ---
 
 ## Contract Address
-> 0x4D4a47f5EB23Bf12a7174990661FEAF274325369
+> 0x45381ec7A5A42eD6fA8F9b650Ab9D4A43dc3280e
 
-![image](https://github.com/user-attachments/assets/f1eb8bd3-a7c0-4369-8cc9-c20896e06a3b)
+![image](https://github.com/user-attachments/assets/c67a7d24-30ac-463e-b8a7-7d2221181df2)
