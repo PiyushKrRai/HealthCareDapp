@@ -1,0 +1,318 @@
+/* --- Global Styles & "Sunrise Glow" Theme --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* FIX: New Bright Color Palette */
+    --background-color: #0a0918;
+    /* Deep Indigo */
+    --card-background: rgba(28, 27, 41, 0.5);
+    /* Semi-transparent purple */
+    --blur-intensity: 10px;
+    --border-color: rgba(255, 255, 255, 0.15);
+    --text-color: #f0f0f0;
+    --text-muted: #a0a0a0;
+    --primary-accent: #ff79c6;
+    /* Vibrant Pink */
+    --secondary-accent: #ffb86c;
+    /* Bright Orange */
+    --success-color: #50fa7b;
+    /* Bright Green */
+    --error-color: #ff5555;
+    /* Bright Red */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    overflow: hidden;
+    line-height: 1.6;
+    margin: 0;
+    /* FIX: Reset browser default margin */
+}
+
+/* Aurora Background with new bright colors */
+body::before,
+body::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    filter: blur(150px);
+    opacity: 0.4;
+}
+
+body::before {
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--primary-accent), transparent 60%);
+    top: -10%;
+    left: -15%;
+}
+
+body::after {
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--secondary-accent), transparent 60%);
+    bottom: -10%;
+    right: -10%;
+}
+
+/* --- Layout & Spacing Fixes --- */
+.app-container {
+    height: 100vh;
+    overflow-y: auto;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideInUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.navbar {
+    background-color: rgba(10, 9, 24, 0.7);
+    backdrop-filter: blur(var(--blur-intensity));
+    padding: 1.25rem 2.5rem;
+    /* Increased padding */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.navbar-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+}
+
+.main-content {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 3rem 2rem;
+    /* FIX: Increased top padding for navbar space */
+}
+
+.hero {
+    text-align: center;
+    padding: 2rem 0;
+    margin-bottom: 3rem;
+}
+
+.hero h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.hero p {
+    font-size: 1.1rem;
+    color: var(--text-muted);
+}
+
+/* --- Grid & Cards --- */
+.actions-grid {
+    width: 100%;
+    /* Ensure it takes full width */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2.5rem;
+    /* FIX: Increased gap for better separation */
+    margin-bottom: 2.5rem;
+    /* Space between grid and records section */
+}
+
+.card {
+    background: var(--card-background);
+    backdrop-filter: blur(var(--blur-intensity));
+    border: 1px solid var(--border-color);
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+}
+
+/* --- Forms & Inputs --- */
+.form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.form-separator {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0.5rem 0;
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    color: #0a0918;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 1rem 0;
+}
+
+.btn-primary {
+    background-color: var(--primary-accent);
+}
+
+.btn-secondary {
+    background-color: var(--secondary-accent);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+}
+
+.btn-danger {
+    background-color: var(--error-color);
+}
+
+/* --- Records --- */
+.records-container {
+    margin-top: 2rem;
+}
+
+.records-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.record-item {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
+}
+
+.record-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.record-header strong {
+    font-size: 1.1rem;
+    color: var(--primary-accent);
+}
+
+.record-header span {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+}
+
+.empty-state svg {
+    margin: 0 auto 1rem auto;
+    color: var(--text-muted);
+}
+
+.empty-state p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+/* --- Toast & Spinner --- */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: #0a0918;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    animation: fadeIn 0.3s ease-out;
+    z-index: 100;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.toast-success {
+    background-color: var(--success-color);
+}
+
+.toast-error {
+    background-color: var(--error-color);
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(10, 9, 24, 0.3);
+    border-top-color: #0a0918;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
