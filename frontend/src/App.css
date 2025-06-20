@@ -104,14 +104,14 @@ body::after {
 .main-content {
     max-width: 1280px;
     margin: 0 auto;
-    padding: 3rem 2rem;
+    padding: 0 2rem;
     /* FIX: Increased top padding for navbar space */
 }
 
 .hero {
     text-align: center;
     padding: 2rem 0;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 
 .hero h2 {
@@ -315,4 +315,68 @@ input[type="text"] {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* --- NEW: Activity Log Styles --- */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    /* More space between items */
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    /* Space for scrollbar */
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    /* Align icon with the top of the text */
+    gap: 1rem;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    border-left-width: 4px;
+    border-left-style: solid;
+}
+
+/* Color coding for different actions */
+.activity-item.type-grant {
+    border-left-color: var(--success-color);
+}
+
+.activity-item.type-revoke {
+    border-left-color: var(--error-color);
+}
+
+.activity-item.type-add_record {
+    border-left-color: var(--secondary-accent);
+}
+
+.activity-item.type-receive_access {
+    border-left-color: var(--primary-accent);
+}
+
+
+.activity-icon {
+    flex-shrink: 0;
+    /* Prevent icon from shrinking */
+    color: var(--text-muted);
+}
+
+.activity-content p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.activity-message {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.activity-timestamp {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
 }
