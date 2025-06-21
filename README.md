@@ -41,11 +41,17 @@ The current implementation provides a solid foundation for a comprehensive healt
 
 Below is a screenshot of the Admin Dashboard, where the contract owner can view and approve pending provider registration requests.
 
+![image](https://github.com/user-attachments/assets/a33aab47-7753-4374-b6a6-b76604681ada)
 
+![Screenshot 2025-06-21 155415](https://github.com/user-attachments/assets/a8db7d58-a6b9-4f53-8f0e-465fb980e592)
+
+![Screenshot 2025-06-21 155447](https://github.com/user-attachments/assets/8aa6e10e-e310-4ffb-a771-65cc9aceb828)
+
+![Screenshot 2025-06-21 155556](https://github.com/user-attachments/assets/dec60c56-43d3-4e33-9989-21231ee060ed)
 
 A full video demonstration walking through the registration, access granting, and record management process can be viewed here:
 
-[Watch the HealthChain Demo Video](https://www.youtube.com/watch?v=example-video-link)
+
 
 ## Contract Address
 
@@ -55,3 +61,5 @@ The `HealthRecords.sol` smart contract is deployed on the **CoreDAO Testnet**.
 
 *   **Block Explorer:** You can view and interact with the contract directly on CoreScan Testnet.
     *   [View on CoreScan Testnet](https://scan.test.btcs.network/address/0x9cDEFD4963e9CD527AabCd3b1aD07a7C0dc81CC7)
+
+![image](https://github.com/user-attachments/assets/4dd9c263-5971-4b7a-8987-5bf90fafb1c1)
