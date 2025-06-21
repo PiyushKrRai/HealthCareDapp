@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { ethers } from "ethers";
+// 1. UPDATED PATH: Now correctly points to the ABI file inside the 'src' folder.
 import HealthRecordsAbi from "./HealthRecordsAbi.json";
 import "./App.css";
 
 // --- Configuration ---
-const contractAddress = "0xdDfC4f9211f9bC5066C536717aeEB42fD82a3C95";
+// IMPORTANT: Replace with the address of your NEWLY deployed contract on CoreDAO Testnet
+const contractAddress = "0x9cDEFD4963e9CD527AabCd3b1aD07a7C0dc81CC7";
 
-// --- SVG Icon Components (for a clean UI) ---
+// --- SVG Icon Components ---
 const Icon = ({ path }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -29,36 +31,20 @@ const LockOpenIcon = () => (
 const DocumentTextIcon = () => (
   <Icon path="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
 );
-const HistoryIcon = () => (
-  <Icon path="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+const ShieldCheckIcon = () => (
+  <Icon path="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.75h-.152c-3.196 0-6.1-1.248-8.25-3.286zm0 13.036h.008v.017h-.008v-.017z" />
 );
-const getActivityIcon = (type) => {
-  switch (type) {
-    case "grant":
-      return <LockOpenIcon />;
-    case "revoke":
-      return (
-        <Icon path="M12 15v2m-6.5-2h13A2.5 2.5 0 0021 12.5v-6.5A2.5 2.5 0 0018.5 3.5h-13A2.5 2.5 0 003 6v6.5A2.5 2.5 0 005.5 15z" />
-      );
-    case "add_record":
-      return <DocumentTextIcon />;
-    case "receive_access":
-      return (
-        <Icon path="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-      );
-    default:
-      return <HistoryIcon />;
-  }
-};
 
 function App() {
   // --- State Management ---
   const [account, setAccount] = useState(null);
   const [contract, setContract] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "", type: "" });
-  const [activityLog, setActivityLog] = useState([]);
+
   const [patientRecords, setPatientRecords] = useState([]);
+  const [pendingProviders, setPendingProviders] = useState([]);
 
   // Form Input States
   const [providerName, setProviderName] = useState("");
@@ -70,12 +56,23 @@ function App() {
   const [viewRecordsPatient, setViewRecordsPatient] = useState("");
 
   // --- Effects ---
-  // This effect runs when the user connects their wallet, fetching initial data.
   useEffect(() => {
     const loadInitialData = async () => {
       if (contract && account) {
         setLoading(true);
-        await fetchActivityLog(contract, account);
+        try {
+          const ownerAddress = await contract.owner();
+          const isUserOwner =
+            ownerAddress.toLowerCase() === account.toLowerCase();
+          setIsOwner(isUserOwner);
+
+          if (isUserOwner) {
+            await fetchPendingProviders(contract);
+          }
+        } catch (err) {
+          console.error("Failed to load initial data:", err);
+          showToast("Could not load contract data.", "error");
+        }
         setLoading(false);
       }
     };
@@ -83,26 +80,30 @@ function App() {
   }, [contract, account]);
 
   // --- Helper Functions ---
-  const showToast = (message, type) => {
+  const showToast = (message, type = "info", duration = 4000) => {
     setToast({ show: true, message, type });
-    setTimeout(() => setToast({ show: false, message: "", type: "" }), 3000);
+    setTimeout(
+      () => setToast({ show: false, message: "", type: "" }),
+      duration
+    );
   };
 
-  // Generic wrapper for handling contract transactions to reduce boilerplate
   const handleAction = async (action, successMessage) => {
+    if (!contract) return showToast("Contract not connected.", "error");
     setLoading(true);
+    let success = false;
     try {
       const tx = await action();
       await tx.wait();
       showToast(successMessage, "success");
-      fetchActivityLog(contract, account); // Refresh activity log after successful action
-      return true;
+      success = true;
     } catch (err) {
+      const errorMessage = err.reason || err.data?.message || err.message;
+      showToast(errorMessage, "error");
       console.error(err);
-      showToast(err.reason || "An error occurred.", "error");
-      return false;
     } finally {
       setLoading(false);
+      return success;
     }
   };
 
@@ -111,7 +112,26 @@ function App() {
     try {
       if (!window.ethereum)
         return showToast("MetaMask is not installed.", "error");
+
       const provider = new ethers.BrowserProvider(window.ethereum);
+      // Request accounts which also prompts the user to connect
+      await provider.send("eth_requestAccounts", []);
+
+      // Attempt to switch to CoreDAO Testnet (chain ID 1115)
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x45B" }], // 0x45B is hex for 1115
+        });
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask.
+        if (switchError.code === 4902) {
+          showToast("Please add CoreDAO Testnet to MetaMask.", "info");
+        } else {
+          throw switchError;
+        }
+      }
+
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
       const healthContract = new ethers.Contract(
@@ -124,89 +144,46 @@ function App() {
       setContract(healthContract);
       showToast("Wallet connected!", "success");
     } catch (err) {
-      showToast("Failed to connect wallet.", "error");
+      showToast(err.message, "error");
     }
   };
 
-  const fetchActivityLog = async (contractInstance, userAddress) => {
-    const filters = {
-      grantedToYou: contractInstance.filters.AccessGranted(null, userAddress),
-      grantedByYou: contractInstance.filters.AccessGranted(userAddress),
-      revokedByYou: contractInstance.filters.AccessRevoked(userAddress),
-      recordAddedToYourFile: contractInstance.filters.RecordAdded(userAddress),
-    };
+  const fetchPendingProviders = async (contractInstance) => {
+    const filter = contractInstance.filters.ProviderRequestedRegistration();
+    const logs = await contractInstance.queryFilter(filter, 0, "latest");
 
-    const logsPromises = Object.entries(filters).map(([key, filter]) =>
-      contractInstance.queryFilter(filter, 0, "latest")
-    );
-    const allLogs = await Promise.all(logsPromises);
-
-    const processLogs = (logs, type) =>
-      Promise.all(
-        logs.map(async (log) => {
-          const block = await log.getBlock();
-          let message = "";
-          switch (type) {
-            case "receive_access":
-              message = `Patient ${log.args.patientAddress.substring(
-                0,
-                6
-              )}... gave you access.`;
-              break;
-            case "grant":
-              message = `You granted access to Provider ${log.args.providerAddress.substring(
-                0,
-                6
-              )}...`;
-              break;
-            case "revoke":
-              message = `You revoked access from Provider ${log.args.providerAddress.substring(
-                0,
-                6
-              )}...`;
-              break;
-            case "add_record":
-              message = `A new record was added by ${
-                log.args.uploadedBy === userAddress
-                  ? "you"
-                  : `Provider ${log.args.uploadedBy.substring(0, 6)}...`
-              }`;
-              break;
-            default:
-              break;
-          }
-          return {
-            type,
-            message,
-            timestamp: block.timestamp,
-            key: log.transactionHash + log.logIndex,
-          };
-        })
+    const pending = [];
+    for (const log of logs) {
+      const providerDetails = await contractInstance.providers(
+        log.args.providerAddress
       );
-
-    const [grantedToYou, grantedByYou, revokedByYou, recordsAdded] =
-      await Promise.all([
-        processLogs(allLogs[0], "receive_access"),
-        processLogs(allLogs[1], "grant"),
-        processLogs(allLogs[2], "revoke"),
-        processLogs(allLogs[3], "add_record"),
-      ]);
-
-    const combinedLogs = [
-      ...grantedToYou,
-      ...grantedByYou,
-      ...revokedByYou,
-      ...recordsAdded,
-    ];
-    combinedLogs.sort((a, b) => b.timestamp - a.timestamp);
-    setActivityLog(combinedLogs);
+      if (!providerDetails.isApproved) {
+        pending.push({
+          address: log.args.providerAddress,
+          name: log.args.name,
+          specialty: log.args.specialty,
+        });
+      }
+    }
+    setPendingProviders(pending.reverse()); // Show newest requests first
   };
 
-  const handleRegisterProvider = async (e) => {
+  const handleApproveProvider = async (providerAddress) => {
+    const success = await handleAction(
+      () => contract.approveProvider(providerAddress),
+      "Provider approved successfully!"
+    );
+    if (success) {
+      await fetchPendingProviders(contract); // Refresh the list
+    }
+  };
+
+  const handleRequestRegistration = async (e) => {
     e.preventDefault();
     const success = await handleAction(
-      () => contract.registerProvider(providerName, providerSpecialty),
-      "Provider registered!"
+      () =>
+        contract.requestProviderRegistration(providerName, providerSpecialty),
+      "Registration requested! An admin must approve it."
     );
     if (success) {
       setProviderName("");
@@ -236,7 +213,7 @@ function App() {
       return showToast("Invalid patient address.", "error");
     const success = await handleAction(
       () => contract.addRecord(addRecordPatient, addRecordDesc, addRecordIpfs),
-      "Record added!"
+      "Record added successfully!"
     );
     if (success) {
       setAddRecordPatient("");
@@ -252,22 +229,22 @@ function App() {
     setLoading(true);
     setPatientRecords([]);
     try {
-      const count = await contract.getRecordCount(viewRecordsPatient);
-      let records = [];
-      for (let i = 0; i < count; i++) {
-        const record = await contract.getRecord(viewRecordsPatient, i);
-        records.push({
-          description: record.description,
-          ipfsHash: record.ipfsHash,
-          timestamp: new Date(Number(record.timestamp) * 1000).toLocaleString(),
-          uploadedBy: record.uploadedBy,
-        });
-      }
-      setPatientRecords(records);
-      if (count == 0)
-        showToast("No records found for this patient.", "success");
+      const records = await contract.getRecords(viewRecordsPatient, 1, 100); // Fetch page 1, up to 100 records
+
+      const formattedRecords = records.map((record) => ({
+        description: record.description,
+        ipfsHash: record.ipfsHash,
+        timestamp: new Date(Number(record.timestamp) * 1000).toLocaleString(),
+        uploadedBy: record.uploadedBy,
+      }));
+
+      setPatientRecords(formattedRecords.reverse()); // Show newest first
+      if (records.length === 0)
+        showToast("No records found for this patient.", "info");
     } catch (err) {
-      showToast(err.reason || "Failed to fetch records.", "error");
+      const errorMessage =
+        err.reason || err.data?.message || "Failed to fetch records.";
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -278,37 +255,65 @@ function App() {
       {toast.show && (
         <div className={`toast toast-${toast.type}`}>{toast.message}</div>
       )}
+
       <nav className="navbar">
         <h1 className="navbar-title">HealthChain</h1>
-        {!account && (
+        {!account ? (
           <button onClick={connectWallet} className="btn btn-primary">
             Connect Wallet
           </button>
+        ) : (
+          <div className="wallet-info">
+            Connected:{" "}
+            <span>
+              {account.substring(0, 6)}...{account.substring(38)}
+            </span>
+          </div>
         )}
       </nav>
 
       <main className="main-content">
         {!account ? (
           <div className="hero slide-in">
-            <h2>The Future of Health Records, Secured by Blockchain.</h2>
-            <p>Connect your wallet to take control of your medical data.</p>
+            <h2>Secure, Sovereign Health Records on CoreDAO.</h2>
+            <p>Connect your wallet to begin.</p>
           </div>
         ) : (
           <>
-            <div className="hero slide-in">
-              <h2>Welcome Back!</h2>
-              <p
-                style={{
-                  color: "var(--primary-accent)",
-                  fontFamily: "monospace",
-                }}
+            {isOwner && (
+              <div
+                className="card admin-panel slide-in"
+                style={{ animationDelay: "50ms" }}
               >
-                {account}
-              </p>
-            </div>
+                <h3 className="card-title">
+                  <ShieldCheckIcon /> Admin Panel
+                </h3>
+                <p className="admin-subtitle">Provider Registration Requests</p>
+                <div className="pending-list">
+                  {pendingProviders.length > 0 ? (
+                    pendingProviders.map((p) => (
+                      <div key={p.address} className="pending-item">
+                        <div className="pending-info">
+                          <strong>{p.name}</strong> ({p.specialty})
+                          <span>{p.address}</span>
+                        </div>
+                        <button
+                          onClick={() => handleApproveProvider(p.address)}
+                          className="btn btn-success"
+                          disabled={loading}
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty-state">No pending provider requests.</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="actions-grid">
-              {/* Patient Card */}
               <div
                 className="card slide-in"
                 style={{ animationDelay: "100ms" }}
@@ -316,38 +321,35 @@ function App() {
                 <h3 className="card-title">
                   <LockOpenIcon /> Patient Controls
                 </h3>
-                <div className="form-container">
-                  <div className="form-group">
-                    <label>Manage Provider Address</label>
-                    <input
-                      type="text"
-                      placeholder="0x..."
-                      value={accessAddress}
-                      onChange={(e) => setAccessAddress(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: "1rem" }}>
-                    <button
-                      onClick={() => handleAccessAction("grant")}
-                      disabled={loading}
-                      className="btn btn-success"
-                      style={{ flex: 1 }}
-                    >
-                      {loading ? <div className="spinner"></div> : "Grant"}
-                    </button>
-                    <button
-                      onClick={() => handleAccessAction("revoke")}
-                      disabled={loading}
-                      className="btn btn-danger"
-                      style={{ flex: 1 }}
-                    >
-                      {loading ? <div className="spinner"></div> : "Revoke"}
-                    </button>
-                  </div>
+                <div className="form-group">
+                  <label>Manage Provider Address</label>
+                  <input
+                    type="text"
+                    placeholder="0x..."
+                    value={accessAddress}
+                    onChange={(e) => setAccessAddress(e.target.value)}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <button
+                    onClick={() => handleAccessAction("grant")}
+                    disabled={loading}
+                    className="btn btn-success"
+                    style={{ flex: 1 }}
+                  >
+                    Grant Access
+                  </button>
+                  <button
+                    onClick={() => handleAccessAction("revoke")}
+                    disabled={loading}
+                    className="btn btn-danger"
+                    style={{ flex: 1 }}
+                  >
+                    Revoke Access
+                  </button>
                 </div>
               </div>
 
-              {/* Provider Card */}
               <div
                 className="card slide-in"
                 style={{ animationDelay: "200ms" }}
@@ -355,130 +357,103 @@ function App() {
                 <h3 className="card-title">
                   <UserPlusIcon /> Provider Actions
                 </h3>
-                <div className="form-container">
-                  <form
-                    onSubmit={handleRegisterProvider}
-                    className="form-container"
-                  >
-                    <div className="form-group">
-                      <label>Provider Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., General Hospital"
-                        value={providerName}
-                        onChange={(e) => setProviderName(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Specialty</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Cardiology"
-                        value={providerSpecialty}
-                        onChange={(e) => setProviderSpecialty(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="btn btn-secondary"
-                    >
-                      {loading ? <div className="spinner"></div> : "Register"}
-                    </button>
-                  </form>
-                  <div className="form-separator"></div>
-                  <form onSubmit={handleAddRecord} className="form-container">
-                    <div className="form-group">
-                      <label>Patient Address</label>
-                      <input
-                        type="text"
-                        placeholder="0x..."
-                        value={addRecordPatient}
-                        onChange={(e) => setAddRecordPatient(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Record Description</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Annual Blood Test"
-                        value={addRecordDesc}
-                        onChange={(e) => setAddRecordDesc(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>IPFS Hash</label>
-                      <input
-                        type="text"
-                        placeholder="Qm..."
-                        value={addRecordIpfs}
-                        onChange={(e) => setAddRecordIpfs(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="btn btn-primary"
-                    >
-                      {loading ? <div className="spinner"></div> : "Add Record"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            {/* Activity Log Section */}
-            <div className="card slide-in" style={{ animationDelay: "300ms" }}>
-              <h3 className="card-title">
-                <HistoryIcon /> My Activity Log
-              </h3>
-              <div className="activity-list">
-                {activityLog.length > 0 ? (
-                  activityLog.map((log) => (
-                    <div
-                      key={log.key}
-                      className={`activity-item type-${log.type}`}
-                    >
-                      <div className="activity-icon">
-                        {getActivityIcon(log.type)}
-                      </div>
-                      <div className="activity-content">
-                        <p className="activity-message">{log.message}</p>
-                        <p className="activity-timestamp">
-                          {new Date(log.timestamp * 1000).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-state">
-                    <HistoryIcon />
-                    <p>Your activity will appear here.</p>
+                <form
+                  onSubmit={handleRequestRegistration}
+                  className="form-container"
+                >
+                  <p className="form-description">
+                    Request to become a provider. An admin must approve.
+                  </p>
+                  <div className="form-group">
+                    {" "}
+                    <label>Your Name/Facility Name</label>{" "}
+                    <input
+                      type="text"
+                      placeholder="e.g., Dr. Alice / General Hospital"
+                      value={providerName}
+                      onChange={(e) => setProviderName(e.target.value)}
+                      required
+                    />{" "}
                   </div>
-                )}
+                  <div className="form-group">
+                    {" "}
+                    <label>Specialty</label>{" "}
+                    <input
+                      type="text"
+                      placeholder="e.g., Cardiology"
+                      value={providerSpecialty}
+                      onChange={(e) => setProviderSpecialty(e.target.value)}
+                      required
+                    />{" "}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn btn-secondary"
+                  >
+                    Request Registration
+                  </button>
+                </form>
+                <div className="form-separator"></div>
+                <form onSubmit={handleAddRecord} className="form-container">
+                  <p className="form-description">
+                    Add a record for a patient who granted you access.
+                  </p>
+                  <div className="form-group">
+                    {" "}
+                    <label>Patient Address</label>{" "}
+                    <input
+                      type="text"
+                      placeholder="0x..."
+                      value={addRecordPatient}
+                      onChange={(e) => setAddRecordPatient(e.target.value)}
+                      required
+                    />{" "}
+                  </div>
+                  <div className="form-group">
+                    {" "}
+                    <label>Record Description</label>{" "}
+                    <input
+                      type="text"
+                      placeholder="e.g., Annual Blood Test"
+                      value={addRecordDesc}
+                      onChange={(e) => setAddRecordDesc(e.target.value)}
+                      required
+                    />{" "}
+                  </div>
+                  <div className="form-group">
+                    {" "}
+                    <label>IPFS Hash</label>{" "}
+                    <input
+                      type="text"
+                      placeholder="Qm..."
+                      value={addRecordIpfs}
+                      onChange={(e) => setAddRecordIpfs(e.target.value)}
+                      required
+                    />{" "}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="btn btn-primary"
+                  >
+                    Add Record
+                  </button>
+                </form>
               </div>
             </div>
 
-            {/* View Records Section */}
             <div
               className="records-container card slide-in"
-              style={{ animationDelay: "400ms", marginTop: "2.5rem" }}
+              style={{ animationDelay: "300ms" }}
             >
               <h3 className="card-title">
                 <DocumentTextIcon /> View Patient Records
               </h3>
-              <form
-                onSubmit={handleViewRecords}
-                style={{
-                  display: "flex",
-                  gap: "1rem",
-                  alignItems: "center",
-                  marginBottom: "2rem",
-                }}
-              >
+              <form onSubmit={handleViewRecords} className="view-records-form">
                 <input
                   type="text"
-                  placeholder="Enter Patient Address to View"
+                  placeholder="Enter Patient Address"
                   value={viewRecordsPatient}
                   onChange={(e) => setViewRecordsPatient(e.target.value)}
                   style={{ flex: 1 }}
@@ -489,11 +464,13 @@ function App() {
                   className="btn btn-primary"
                   style={{ width: "auto" }}
                 >
-                  {loading ? <div className="spinner"></div> : "Fetch"}
+                  Fetch Records
                 </button>
               </form>
               <div className="records-list">
-                {patientRecords.length > 0 ? (
+                {loading && patientRecords.length === 0 ? (
+                  <div className="spinner"></div>
+                ) : patientRecords.length > 0 ? (
                   patientRecords.map((record, index) => (
                     <div key={index} className="record-item">
                       <div className="record-header">
@@ -511,7 +488,7 @@ function App() {
                 ) : (
                   <div className="empty-state">
                     <DocumentTextIcon />
-                    <p>No records to display.</p>
+                    <p>Enter a patient address and click fetch.</p>
                   </div>
                 )}
               </div>
