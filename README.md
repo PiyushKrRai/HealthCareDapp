@@ -41,17 +41,24 @@ The current implementation provides a solid foundation for a comprehensive healt
 
 Below is a screenshot of the Admin Dashboard, where the contract owner can view and approve pending provider registration requests.
 
-![image](https://github.com/user-attachments/assets/a33aab47-7753-4374-b6a6-b76604681ada)
+![Screenshot 2025-06-21 155400](https://github.com/user-attachments/assets/afcbfd00-0c0f-4e01-b564-b3873ef19265)
 
-![Screenshot 2025-06-21 155415](https://github.com/user-attachments/assets/a8db7d58-a6b9-4f53-8f0e-465fb980e592)
+![Screenshot 2025-06-21 155415](https://github.com/user-attachments/assets/f4f1ee0e-19c3-4744-b541-596d95a4ef21)
 
-![Screenshot 2025-06-21 155447](https://github.com/user-attachments/assets/8aa6e10e-e310-4ffb-a771-65cc9aceb828)
+![Screenshot 2025-06-21 155447](https://github.com/user-attachments/assets/c9492eb5-2817-4f56-b7c7-2df76b268480)
 
-![Screenshot 2025-06-21 155556](https://github.com/user-attachments/assets/dec60c56-43d3-4e33-9989-21231ee060ed)
+![Screenshot 2025-06-22 234048](https://github.com/user-attachments/assets/5cbecfec-bf7d-41cd-adf9-51bf976fb513)
+
+![Screenshot 2025-06-22 234112](https://github.com/user-attachments/assets/516550a2-82ba-402c-91b5-09a3b6ed57cb)
+
+![Screenshot 2025-06-22 234157](https://github.com/user-attachments/assets/5fde7e8c-3d24-4a8e-9642-a7b8bdec9b7d)
+
+![Screenshot 2025-06-22 234221](https://github.com/user-attachments/assets/6cf36d34-62d8-4f6c-9b90-9d3a198297ab)
+
 
 A full video demonstration walking through the registration, access granting, and record management process can be viewed here:
 
-
+https://github.com/user-attachments/assets/0f10c2b6-60c8-4c17-ae24-a44e20344b43
 
 ## Contract Address
 
